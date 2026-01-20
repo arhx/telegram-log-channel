@@ -7,6 +7,7 @@ use Monolog\Level;
 use Monolog\Handler\AbstractProcessingHandler;
 use GuzzleHttp\Client;
 use Monolog\LogRecord;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class TelegramHandler extends AbstractProcessingHandler
 {
@@ -24,6 +25,16 @@ class TelegramHandler extends AbstractProcessingHandler
 
     protected function write(LogRecord $record): void
     {
+        if (isset($record['context']['exception'])) {
+            $exception = $record['context']['exception'];
+            if ($exception instanceof HttpExceptionInterface) {
+                $statusCode = $exception->getStatusCode();
+                if ($statusCode >= 400 && $statusCode < 500) {
+                    return;
+                }
+            }
+        }
+
         // Get the host or directory name
         $hostOrDirectory = php_sapi_name() === 'cli'
             ? basename(base_path()) // If CLI, get the directory name
@@ -54,8 +65,7 @@ class TelegramHandler extends AbstractProcessingHandler
 
             // Send the message
             $this->sendMessage($formattedMessage);
-        }catch (
-Exception $e){
+        }catch (\Exception $e){
             Illuminate\Support\Facades\Log::debug('TelegramHandler',[
                 'exception' => $e,
                 'record' => $record->toArray(),
