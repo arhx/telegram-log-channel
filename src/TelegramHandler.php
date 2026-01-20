@@ -1,0 +1,77 @@
+<?php
+
+namespace Arhx\TelegramLogChannel;
+
+use Illuminate;
+use Monolog\Level;
+use Monolog\Handler\AbstractProcessingHandler;
+use GuzzleHttp\Client;
+use Monolog\LogRecord;
+
+class TelegramHandler extends AbstractProcessingHandler
+{
+    protected Client $client;
+    protected string $botToken;
+    protected string $chatId;
+
+    public function __construct(string $botToken, string $chatId, int|string|Level $level = Level::Error, bool $bubble = true)
+    {
+        parent::__construct($level, $bubble);
+        $this->client = new Client(['verify' => false]);
+        $this->botToken = $botToken;
+        $this->chatId = $chatId;
+    }
+
+    protected function write(LogRecord $record): void
+    {
+        // Get the host or directory name
+        $hostOrDirectory = php_sapi_name() === 'cli'
+            ? basename(base_path()) // If CLI, get the directory name
+            : request()->getHost(); // If not CLI, get the host name
+        if($host = gethostname()){
+            $hostOrDirectory = "$host:$hostOrDirectory";
+        }
+
+        try{
+            $context = !empty($record['context']) ? json_encode($record['context'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
+            $extra = !empty($record['extra']) ? json_encode($record['extra'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
+            $params = implode("\n",array_filter([
+                $context,
+                $extra
+            ]));
+            if(!empty($params)){
+                $params = "\n".$params;
+            }
+
+            // Format the message with additional data
+            $formattedMessage = sprintf(
+                "[%s] %s: %s%s",
+                $hostOrDirectory,
+                $record['level_name'],
+                $record['message'],
+                $params
+            );
+
+            // Send the message
+            $this->sendMessage($formattedMessage);
+        }catch (
+Exception $e){
+            Illuminate\Support\Facades\Log::debug('TelegramHandler',[
+                'exception' => $e,
+                'record' => $record->toArray(),
+            ]);
+        }
+    }
+
+    protected function sendMessage(string $message): void
+    {
+        $url = "https://api.telegram.org/bot{$this->botToken}/sendMessage";
+        $data = [
+            'json' => [
+                'chat_id' => $this->chatId,
+                'text' => Illuminate\Support\Str::limit($message,4090),
+            ],
+        ];
+        rescue(fn() => $this->client->post($url, $data), report: false);
+    }
+}

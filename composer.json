@@ -1,0 +1,32 @@
+{
+    "name": "arhx/telegram-log-channel",
+    "description": "A simple Laravel package to send log messages to a Telegram chat.",
+    "type": "laravel-package",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Arh",
+            "email": "arhx@example.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": "^8.0",
+        "guzzlehttp/guzzle": "^7.0",
+        "monolog/monolog": "^2.0|^3.0",
+        "illuminate/support": "^8.0|^9.0|^10.0|^11.0",
+        "illuminate/log": "^8.0|^9.0|^10.0|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Arhx\\TelegramLogChannel\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Arhx\\TelegramLogChannel\\TelegramLogChannelServiceProvider"
+            ]
+        }
+    }
+}
