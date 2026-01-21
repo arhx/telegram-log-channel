@@ -2,7 +2,7 @@
     "name": "arhx/telegram-log-channel",
     "description": "A simple Laravel package to send log messages to a Telegram chat.",
     "type": "laravel-package",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "authors": [
         {
             "name": "Arh",
