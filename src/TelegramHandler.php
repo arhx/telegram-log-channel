@@ -2,7 +2,8 @@
 
 namespace Arhx\TelegramLogChannel;
 
-use Illuminate;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Monolog\Level;
 use Monolog\Handler\AbstractProcessingHandler;
 use GuzzleHttp\Client;
@@ -43,34 +44,27 @@ class TelegramHandler extends AbstractProcessingHandler
             $hostOrDirectory = "$host:$hostOrDirectory";
         }
 
-        try{
-            $context = !empty($record['context']) ? json_encode($record['context'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
-            $extra = !empty($record['extra']) ? json_encode($record['extra'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
-            $params = implode("\n",array_filter([
-                $context,
-                $extra
-            ]));
-            if(!empty($params)){
-                $params = "\n".$params;
-            }
-
-            // Format the message with additional data
-            $formattedMessage = sprintf(
-                "[%s] %s: %s%s",
-                $hostOrDirectory,
-                $record['level_name'],
-                $record['message'],
-                $params
-            );
-
-            // Send the message
-            $this->sendMessage($formattedMessage);
-        }catch (\Exception $e){
-            Illuminate\Support\Facades\Log::debug('TelegramHandler',[
-                'exception' => $e,
-                'record' => $record->toArray(),
-            ]);
+        $context = !empty($record['context']) ? json_encode($record['context'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
+        $extra = !empty($record['extra']) ? json_encode($record['extra'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
+        $params = implode("\n", array_filter([
+            $context,
+            $extra
+        ]));
+        if (!empty($params)) {
+            $params = "\n" . $params;
         }
+
+        // Format the message with additional data
+        $formattedMessage = sprintf(
+            "[%s] %s: %s%s",
+            $hostOrDirectory,
+            $record['level_name'],
+            $record['message'],
+            $params
+        );
+
+        // Send the message
+        $this->sendMessage($formattedMessage);
     }
 
     protected function sendMessage(string $message): void
@@ -79,9 +73,10 @@ class TelegramHandler extends AbstractProcessingHandler
         $data = [
             'json' => [
                 'chat_id' => $this->chatId,
-                'text' => Illuminate\Support\Str::limit($message,4090),
+                'text' => Str::limit($message, 4090),
             ],
         ];
-        rescue(fn() => $this->client->post($url, $data), report: false);
+
+        $this->client->post($url, $data);
     }
 }
