@@ -1,0 +1,30 @@
+[2026-01-21 01:32:23] production.ERROR: The C:\PhpStormProjects\_packages\telegram-log-channel\bootstrap\cache directory must be present and writable. {"exception":"[object] (Exception(code: 0): The C:\\PhpStormProjects\\_packages\\telegram-log-channel\\bootstrap\\cache directory must be present and writable. at C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/PackageManifest.php:179)
+[stacktrace]
+#0 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/orchestra/testbench-core/src/Foundation/PackageManifest.php(158): Illuminate/Foundation/PackageManifest->write(Array)
+#1 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/PackageManifest.php(132): Orchestra/Testbench/Foundation/PackageManifest->write(Array)
+#2 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/PackageManifest.php(108): Illuminate/Foundation/PackageManifest->build()
+#3 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/orchestra/testbench-core/src/Foundation/PackageManifest.php(103): Illuminate/Foundation/PackageManifest->getManifest()
+#4 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/PackageManifest.php(91): Orchestra/Testbench/Foundation/PackageManifest->getManifest()
+#5 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/PackageManifest.php(80): Illuminate/Foundation/PackageManifest->config('aliases')
+#6 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/RegisterFacades.php(26): Illuminate/Foundation/PackageManifest->aliases()
+#7 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/orchestra/testbench-core/src/Concerns/CreatesApplication.php(566): Illuminate/Foundation/Bootstrap/RegisterFacades->bootstrap(Object(Illuminate/Foundation/Application))
+#8 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/orchestra/testbench-core/src/Concerns/CreatesApplication.php(321): Orchestra/Testbench/Foundation/Application->resolveApplicationBootstrappers(Object(Illuminate/Foundation/Application))
+#9 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/orchestra/testbench-core/src/Foundation/Application.php(195): Orchestra/Testbench/Foundation/Application->createApplication()
+#10 C:/PhpStormProjects/_packages/telegram-log-channel/repro_crash.php(9): Orchestra/Testbench/Foundation/Application::create('C://PhpStormProj...', Object(Closure), Array)
+#11 {main}
+"} 
+[2026-01-21 01:32:43] production.ERROR: The C:\PhpStormProjects\_packages\telegram-log-channel\bootstrap\cache directory must be present and writable. {"exception":"[object] (Exception(code: 0): The C:\\PhpStormProjects\\_packages\\telegram-log-channel\\bootstrap\\cache directory must be present and writable. at C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/PackageManifest.php:179)
+[stacktrace]
+#0 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/orchestra/testbench-core/src/Foundation/PackageManifest.php(158): Illuminate/Foundation/PackageManifest->write(Array)
+#1 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/PackageManifest.php(132): Orchestra/Testbench/Foundation/PackageManifest->write(Array)
+#2 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/PackageManifest.php(108): Illuminate/Foundation/PackageManifest->build()
+#3 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/orchestra/testbench-core/src/Foundation/PackageManifest.php(103): Illuminate/Foundation/PackageManifest->getManifest()
+#4 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/PackageManifest.php(91): Orchestra/Testbench/Foundation/PackageManifest->getManifest()
+#5 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/PackageManifest.php(80): Illuminate/Foundation/PackageManifest->config('aliases')
+#6 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/RegisterFacades.php(26): Illuminate/Foundation/PackageManifest->aliases()
+#7 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/orchestra/testbench-core/src/Concerns/CreatesApplication.php(566): Illuminate/Foundation/Bootstrap/RegisterFacades->bootstrap(Object(Illuminate/Foundation/Application))
+#8 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/orchestra/testbench-core/src/Concerns/CreatesApplication.php(321): Orchestra/Testbench/Foundation/Application->resolveApplicationBootstrappers(Object(Illuminate/Foundation/Application))
+#9 C:/PhpStormProjects/_packages/telegram-log-channel/vendor/orchestra/testbench-core/src/Foundation/Application.php(195): Orchestra/Testbench/Foundation/Application->createApplication()
+#10 C:/PhpStormProjects/_packages/telegram-log-channel/repro_crash.php(46): Orchestra/Testbench/Foundation/Application::create('C://PhpStormProj...', NULL, Array)
+#11 {main}
+"} 

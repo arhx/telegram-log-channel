@@ -44,6 +44,8 @@ The service provider will be automatically registered.
 
 To receive Telegram notifications for your logs, add the `telegram` channel to your chosen logging stack in `config/logging.php`.
 
+If the environment variables `TELEGRAM_LOG_BOT_TOKEN` and `TELEGRAM_LOG_CHAT_ID` are not set, the `telegram` channel will gracefully fallback to a `NullHandler`, meaning no logs will be sent to Telegram and the application will not crash.
+
 For example, to add it to the default `stack` channel:
 
 ```php
