@@ -58,6 +58,11 @@ For example, to add it to the default `stack` channel:
 
 Now, any log message that meets the configured level will be sent to your Telegram chat.
 
+> **Tip for Laravel 12:** You might just need to update your `.env` file to include `telegram` in the logging stack:
+> ```env
+> LOG_STACK=daily,telegram
+> ```
+
 ## Testing
 
 ### In a Laravel Application
