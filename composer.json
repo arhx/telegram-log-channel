@@ -25,6 +25,11 @@
             "Arhx\\TelegramLogChannel\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Arhx\\TelegramLogChannel\\Tests\\": "tests/"
+        }
+    },
     "extra": {
         "laravel": {
             "providers": [
