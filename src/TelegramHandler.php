@@ -50,7 +50,13 @@ class TelegramHandler extends AbstractProcessingHandler
                 ? basename(base_path()) // If CLI, get the directory name
                 : request()->getHost(); // If not CLI, get the host name
             if($host = gethostname()){
-                $hostOrDirectory = "$host:$hostOrDirectory";
+                $hostOrDirectory = $host === $hostOrDirectory ? $host : "$host:$hostOrDirectory";
+            }
+
+            // Extract first non-vendor file:line from exception trace
+            $sourceLocation = '';
+            if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
+                $sourceLocation = $this->extractSourceLocation($record['context']['exception']);
             }
 
             $context = !empty($record['context']) ? json_encode($record['context'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
@@ -65,7 +71,8 @@ class TelegramHandler extends AbstractProcessingHandler
 
             // Format the message with additional data
             $formattedMessage = sprintf(
-                "[%s] %s: %s%s",
+                "%s[%s] %s: %s%s",
+                $sourceLocation,
                 $hostOrDirectory,
                 $record['level_name'],
                 $record['message'],
@@ -79,6 +86,30 @@ class TelegramHandler extends AbstractProcessingHandler
         } finally {
             self::$isHandling = false;
         }
+    }
+
+    protected function extractSourceLocation(\Throwable $exception): string
+    {
+        $basePath = base_path() . DIRECTORY_SEPARATOR;
+        $vendorPath = $basePath . 'vendor' . DIRECTORY_SEPARATOR;
+
+        // Check the exception's own file first, then walk the trace
+        $candidates = [['file' => $exception->getFile(), 'line' => $exception->getLine()]];
+        foreach ($exception->getTrace() as $frame) {
+            if (isset($frame['file'], $frame['line'])) {
+                $candidates[] = $frame;
+            }
+        }
+
+        foreach ($candidates as $frame) {
+            $file = $frame['file'];
+            if (!str_starts_with($file, $vendorPath) && str_starts_with($file, $basePath)) {
+                $relative = str_replace(DIRECTORY_SEPARATOR, '/', substr($file, strlen($basePath)));
+                return "$relative:{$frame['line']}\n";
+            }
+        }
+
+        return '';
     }
 
     protected function logSelfError(\Throwable $e): void
