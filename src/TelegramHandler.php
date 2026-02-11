@@ -46,7 +46,8 @@ class TelegramHandler extends AbstractProcessingHandler
             }
 
             // Get the host or directory name
-            $hostOrDirectory = php_sapi_name() === 'cli'
+            $isCli = php_sapi_name() === 'cli';
+            $hostOrDirectory = $isCli
                 ? basename(base_path()) // If CLI, get the directory name
                 : request()->getHost(); // If not CLI, get the host name
             if($host = gethostname()){
@@ -58,6 +59,39 @@ class TelegramHandler extends AbstractProcessingHandler
             if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
                 $sourceLocation = $this->extractSourceLocation($record['context']['exception']);
             }
+
+            // Collect metadata lines
+            $meta = [];
+
+            if ($sourceLocation) {
+                $meta[] = "Source: $sourceLocation";
+            }
+
+            // Request info (only in HTTP context)
+            if (!$isCli) {
+                try {
+                    $request = request();
+                    $method = $request->method();
+                    $path = $request->getPathInfo();
+                    $requestData = $request->except(['_method', '_token']);
+                    $requestJson = !empty($requestData) ? ' ' . json_encode($requestData, JSON_UNESCAPED_UNICODE) : '';
+                    $meta[] = "Request: $method $path$requestJson";
+                } catch (\Throwable $e) {
+                    // request not available
+                }
+            }
+
+            // Auth user ID
+            try {
+                $userId = \Illuminate\Support\Facades\Auth::id();
+                if ($userId !== null) {
+                    $meta[] = "User: $userId";
+                }
+            } catch (\Throwable $e) {
+                // auth not available
+            }
+
+            $metaBlock = !empty($meta) ? "\n" . implode("\n", $meta) : '';
 
             $context = !empty($record['context']) ? json_encode($record['context'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
             $extra = !empty($record['extra']) ? json_encode($record['extra'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
@@ -71,11 +105,11 @@ class TelegramHandler extends AbstractProcessingHandler
 
             // Format the message with additional data
             $formattedMessage = sprintf(
-                "%s[%s] %s: %s%s",
-                $sourceLocation,
+                "[%s] %s: %s%s%s",
                 $hostOrDirectory,
                 $record['level_name'],
                 $record['message'],
+                $metaBlock,
                 $params
             );
 
@@ -105,7 +139,7 @@ class TelegramHandler extends AbstractProcessingHandler
             $file = $frame['file'];
             if (!str_starts_with($file, $vendorPath) && str_starts_with($file, $basePath)) {
                 $relative = str_replace(DIRECTORY_SEPARATOR, '/', substr($file, strlen($basePath)));
-                return "$relative:{$frame['line']}\n";
+                return "$relative:{$frame['line']}";
             }
         }
 
