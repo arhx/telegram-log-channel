@@ -12,13 +12,17 @@ class TelegramLogChannelServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        $this->publishes([
+            __DIR__.'/../config/telegram-log-channel.php' => config_path('telegram-log-channel.php'),
+        ], 'telegram-log-channel-config');
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 TestCommand::class,
             ]);
         }
 
-        if (env('TELEGRAM_LOG_QUEUE_FAILURES', true) && class_exists(Queue::class)) {
+        if (config('telegram-log-channel.queue_failures', true) && class_exists(Queue::class)) {
             Queue::failing(function (JobFailed $event) {
                 Log::channel('telegram')->error('Queue job failed: ' . $event->job->getName(), [
                     'exception' => $event->exception->getMessage(),
@@ -31,6 +35,8 @@ class TelegramLogChannelServiceProvider extends ServiceProvider
 
     public function register(): void
     {
+        $this->mergeConfigFrom(__DIR__.'/../config/telegram-log-channel.php', 'telegram-log-channel');
+
         if (!$this->app->make('config')->has('logging.channels.telegram')) {
             $this->app->make('config')->set('logging.channels.telegram', [
                 'driver' => 'telegram',

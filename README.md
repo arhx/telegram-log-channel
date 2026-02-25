@@ -81,6 +81,16 @@ Each failed job notification includes:
 
 > **Note:** The notification respects your configured `TELEGRAM_LOG_LEVEL`. Since failures are logged at the `error` level, make sure your level is set to `error` or lower (e.g., `debug`, `info`, `warning`, `error`).
 
+### Using config:cache
+
+If you use `php artisan config:cache` (recommended in production), you must publish the package config so the env variable is captured at cache time:
+
+```bash
+php artisan vendor:publish --tag=telegram-log-channel-config
+```
+
+This creates `config/telegram-log-channel.php` in your application. The `TELEGRAM_LOG_QUEUE_FAILURES` env variable will then be read correctly even when the config cache is active.
+
 ## Testing
 
 ### In a Laravel Application

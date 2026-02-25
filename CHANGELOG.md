@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-02-25
+
+### Fixed
+- Queue failures setting now reads from a dedicated config file via `config()` instead of `env()` directly, ensuring compatibility with `php artisan config:cache`.
+- Added `mergeConfigFrom` in `register()` so default values work without publishing.
+- Added `publishes()` so users can publish `config/telegram-log-channel.php` for production use with config cache.
+
 ## [1.1.0] - 2026-02-25
 
 ### Added
