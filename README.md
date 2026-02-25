@@ -63,6 +63,24 @@ Now, any log message that meets the configured level will be sent to your Telegr
 > LOG_STACK=daily,telegram
 > ```
 
+## Queue Job Failure Logging
+
+The package automatically sends a Telegram notification when a queued job fails. This feature is **enabled by default** and works out of the box with Laravel's queue system (Laravel 10, 11, 12).
+
+To disable it, set the following in your `.env`:
+
+```env
+TELEGRAM_LOG_QUEUE_FAILURES=false
+```
+
+Each failed job notification includes:
+- Job class name
+- Exception message
+- Queue connection name
+- Queue name
+
+> **Note:** The notification respects your configured `TELEGRAM_LOG_LEVEL`. Since failures are logged at the `error` level, make sure your level is set to `error` or lower (e.g., `debug`, `info`, `warning`, `error`).
+
 ## Testing
 
 ### In a Laravel Application

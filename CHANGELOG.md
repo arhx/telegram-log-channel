@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-02-25
+
+### Added
+- Automatic Telegram notification when a queued job fails (`Queue::failing` listener).
+- Notifications include job name, exception message, connection name, and queue name.
+- Controlled via `TELEGRAM_LOG_QUEUE_FAILURES` env variable (defaults to `true`).
+- Compatible with Laravel 10, 11, and 12.
+
 ## [1.0.5] - 2026-01-24
 
 ### Added
