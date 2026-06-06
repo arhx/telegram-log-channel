@@ -2,6 +2,7 @@
 
 namespace Arhx\TelegramLogChannel;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Monolog\Level;
@@ -15,13 +16,19 @@ class TelegramHandler extends AbstractProcessingHandler
     protected Client $client;
     protected string $botToken;
     protected string $chatId;
+    protected int $throttleSeconds;
 
-    public function __construct(string $botToken, string $chatId, int|string|Level $level = Level::Error, bool $bubble = true)
+    public function __construct(string $botToken, string $chatId, int|string|Level $level = Level::Error, bool $bubble = true, int $throttleSeconds = 600)
     {
         parent::__construct($level, $bubble);
-        $this->client = new Client(['verify' => false]);
+        $this->client = new Client([
+            'verify' => false,
+            'timeout' => 5,
+            'connect_timeout' => 3,
+        ]);
         $this->botToken = $botToken;
         $this->chatId = $chatId;
+        $this->throttleSeconds = $throttleSeconds;
     }
 
     private static bool $isHandling = false;
@@ -58,6 +65,13 @@ class TelegramHandler extends AbstractProcessingHandler
             $sourceLocation = '';
             if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
                 $sourceLocation = $this->extractSourceLocation($record['context']['exception']);
+            }
+
+            // Throttle identical messages: skip if the same error was already sent
+            // within the throttle window. The signature ignores volatile data
+            // (request body, timestamps) so genuinely identical errors collapse.
+            if ($this->isThrottled($record, $sourceLocation)) {
+                return;
             }
 
             // Collect metadata lines
@@ -119,6 +133,32 @@ class TelegramHandler extends AbstractProcessingHandler
             $this->logSelfError($e);
         } finally {
             self::$isHandling = false;
+        }
+    }
+
+    /**
+     * Determine whether an identical message was already sent within the
+     * throttle window. Returns true when the message should be suppressed.
+     *
+     * Uses Cache::add() which is atomic: it only writes (and returns true)
+     * when the key is absent, so the first occurrence passes and subsequent
+     * identical ones are dropped until the TTL expires. Fails open: if the
+     * cache is unavailable for any reason, the message is still sent.
+     */
+    protected function isThrottled(LogRecord $record, string $sourceLocation): bool
+    {
+        if ($this->throttleSeconds <= 0) {
+            return false;
+        }
+
+        try {
+            $signature = md5($record['level_name'] . '|' . $record['message'] . '|' . $sourceLocation);
+            $key = 'telegram-log:' . $signature;
+
+            // Cache::add returns true if the key was set (i.e. not seen recently).
+            return !Cache::add($key, true, $this->throttleSeconds);
+        } catch (\Throwable $e) {
+            return false;
         }
     }
 

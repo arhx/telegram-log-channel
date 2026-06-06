@@ -18,7 +18,9 @@ class CreateTelegramLogger
             $logger->pushHandler(new TelegramHandler(
                 $token,
                 $chatId,
-                Logger::toMonologLevel($config['level'] ?? 'error')
+                Logger::toMonologLevel($config['level'] ?? 'error'),
+                true,
+                (int) ($config['throttle'] ?? 600)
             ));
         } else {
             $logger->pushHandler(new NullHandler());

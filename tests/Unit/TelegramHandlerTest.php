@@ -55,6 +55,69 @@ class TelegramHandlerTest extends TestCase
         $telegramHandler->handle($record);
     }
 
+    public function test_it_throttles_identical_messages()
+    {
+        // Two successful responses available; throttling should consume only one.
+        $mock = new MockHandler([
+            new Response(200, [], '{"ok":true}'),
+            new Response(200, [], '{"ok":true}'),
+        ]);
+
+        $handler = HandlerStack::create($mock);
+        $client = new Client(['handler' => $handler]);
+
+        $telegramHandler = new TelegramHandler('token', 'chat_id', Level::Error, true, 600);
+
+        $reflection = new \ReflectionClass($telegramHandler);
+        $property = $reflection->getProperty('client');
+        $property->setAccessible(true);
+        $property->setValue($telegramHandler, $client);
+
+        $makeRecord = fn () => new LogRecord(
+            new \DateTimeImmutable(),
+            'test',
+            Level::Error,
+            'Identical message'
+        );
+
+        $telegramHandler->handle($makeRecord()); // sent -> consumes 1 mock response
+        $telegramHandler->handle($makeRecord()); // identical -> throttled, no request
+
+        // One response left in the mock queue means the second send was skipped.
+        $this->assertSame(1, $mock->count());
+    }
+
+    public function test_it_does_not_throttle_when_disabled()
+    {
+        $mock = new MockHandler([
+            new Response(200, [], '{"ok":true}'),
+            new Response(200, [], '{"ok":true}'),
+        ]);
+
+        $handler = HandlerStack::create($mock);
+        $client = new Client(['handler' => $handler]);
+
+        $telegramHandler = new TelegramHandler('token', 'chat_id', Level::Error, true, 0);
+
+        $reflection = new \ReflectionClass($telegramHandler);
+        $property = $reflection->getProperty('client');
+        $property->setAccessible(true);
+        $property->setValue($telegramHandler, $client);
+
+        $makeRecord = fn () => new LogRecord(
+            new \DateTimeImmutable(),
+            'test',
+            Level::Error,
+            'Identical message'
+        );
+
+        $telegramHandler->handle($makeRecord());
+        $telegramHandler->handle($makeRecord());
+
+        // Both messages sent -> mock queue fully drained.
+        $this->assertSame(0, $mock->count());
+    }
+
     public function test_it_prevents_infinite_recursion()
     {
         $mock = new MockHandler([

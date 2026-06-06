@@ -24,6 +24,7 @@ The service provider will be automatically registered.
     -   `TELEGRAM_LOG_BOT_TOKEN`: Your Telegram bot's token.
     -   `TELEGRAM_LOG_CHAT_ID`: The ID of the chat where logs should be sent.
     -   `TELEGRAM_LOG_LEVEL`: (Optional) The minimum log level to be sent (defaults to `error`).
+    -   `TELEGRAM_LOG_THROTTLE`: (Optional) Number of seconds to suppress duplicate messages (defaults to `600` = 10 minutes). Set to `0` to disable throttling.
 
 2.  (Optional) The package comes with a default configuration for the `telegram` log channel. If you need to customize it, you can add your own channel configuration to `config/logging.php`:
 
@@ -57,6 +58,19 @@ For example, to add it to the default `stack` channel:
 ```
 
 Now, any log message that meets the configured level will be sent to your Telegram chat.
+
+## Spam Throttling (Duplicate Suppression)
+
+To avoid flooding your chat with the same error over and over, the package throttles **identical** messages. After a message is sent, any identical message is suppressed for `TELEGRAM_LOG_THROTTLE` seconds (defaults to **600 = 10 minutes**).
+
+Two messages are considered identical when their **level**, **message text**, and **source file:line** match. Volatile data (request body, query params, timestamps) is intentionally excluded from the comparison so that genuinely repeated errors collapse into a single notification.
+
+```env
+TELEGRAM_LOG_THROTTLE=600   # suppress duplicates for 10 minutes
+TELEGRAM_LOG_THROTTLE=0     # disable throttling entirely
+```
+
+This relies on your application's configured cache store (`Cache` facade). If the cache is unavailable for any reason, the package fails open and the message is still sent.
 
 > **Tip for Laravel 12:** You might just need to update your `.env` file to include `telegram` in the logging stack:
 > ```env

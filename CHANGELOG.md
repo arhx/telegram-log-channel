@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-06-06
+
+### Added
+- Spam throttling: identical messages (same level, text, and source file:line) are now suppressed for a configurable window via the `Cache` facade. Controlled by `TELEGRAM_LOG_THROTTLE` (defaults to `600` seconds = 10 minutes; `0` disables it).
+
+### Fixed
+- Added Guzzle `timeout` (5s) and `connect_timeout` (3s) so an unreachable Telegram API no longer blocks the request/queue worker indefinitely.
+
 ## [1.1.1] - 2026-02-25
 
 ### Fixed
