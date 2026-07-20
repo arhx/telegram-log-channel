@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-07-20
+
+### Added
+- Guzzle 8 support: the `guzzlehttp/guzzle` constraint is now `^7.0|^8.0`. No code changes were required — the client options (`verify`, `timeout`, `connect_timeout`) and the `post()` JSON send path behave identically on both majors.
+
+### Notes
+- `laravel/framework` still pins `guzzlehttp/guzzle ^7.8.2` (as of v13.20.0), so a standard Laravel app will keep resolving Guzzle 7 until the framework widens its own constraint. This release simply stops the package from being the blocker.
+
 ## [1.3.0] - 2026-06-06
 
 ### Added
