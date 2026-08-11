@@ -20,7 +20,8 @@ class CreateTelegramLogger
                 $chatId,
                 Logger::toMonologLevel($config['level'] ?? 'error'),
                 true,
-                (int) ($config['throttle'] ?? 600)
+                (int) ($config['throttle'] ?? 600),
+                $config['topic_id'] ?? null
             ));
         } else {
             $logger->pushHandler(new NullHandler());

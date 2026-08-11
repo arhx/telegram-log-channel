@@ -18,7 +18,13 @@ class TelegramHandler extends AbstractProcessingHandler
     protected string $chatId;
     protected int $throttleSeconds;
 
-    public function __construct(string $botToken, string $chatId, int|string|Level $level = Level::Error, bool $bubble = true, int $throttleSeconds = 600)
+    /**
+     * Forum topic (thread) inside a supergroup, i.e. Telegram's
+     * `message_thread_id`. Null = post to the group's General thread.
+     */
+    protected ?int $topicId;
+
+    public function __construct(string $botToken, string $chatId, int|string|Level $level = Level::Error, bool $bubble = true, int $throttleSeconds = 600, int|string|null $topicId = null)
     {
         parent::__construct($level, $bubble);
         $this->client = new Client([
@@ -29,6 +35,7 @@ class TelegramHandler extends AbstractProcessingHandler
         $this->botToken = $botToken;
         $this->chatId = $chatId;
         $this->throttleSeconds = $throttleSeconds;
+        $this->topicId = ($topicId === null || $topicId === '') ? null : (int) $topicId;
     }
 
     private static bool $isHandling = false;
@@ -152,7 +159,7 @@ class TelegramHandler extends AbstractProcessingHandler
         }
 
         try {
-            $signature = md5($record['level_name'] . '|' . $record['message'] . '|' . $sourceLocation);
+            $signature = md5($record['level_name'] . '|' . $record['message'] . '|' . $sourceLocation . '|' . $this->chatId . '|' . $this->topicId);
             $key = 'telegram-log:' . $signature;
 
             // Cache::add returns true if the key was set (i.e. not seen recently).
@@ -200,13 +207,18 @@ class TelegramHandler extends AbstractProcessingHandler
     protected function sendMessage(string $message): void
     {
         $url = "https://api.telegram.org/bot{$this->botToken}/sendMessage";
-        $data = [
-            'json' => [
-                'chat_id' => $this->chatId,
-                'text' => Str::limit($message, 4090),
-            ],
+        $payload = [
+            'chat_id' => $this->chatId,
+            'text' => Str::limit($message, 4090),
         ];
 
-        $this->client->post($url, $data);
+        // Forum supergroups: without message_thread_id Telegram drops the message
+        // into General. Only sent when a topic is configured, so plain groups and
+        // channels keep working unchanged.
+        if ($this->topicId !== null) {
+            $payload['message_thread_id'] = $this->topicId;
+        }
+
+        $this->client->post($url, ['json' => $payload]);
     }
 }

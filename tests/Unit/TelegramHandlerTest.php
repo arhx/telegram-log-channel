@@ -118,6 +118,59 @@ class TelegramHandlerTest extends TestCase
         $this->assertSame(0, $mock->count());
     }
 
+    public function test_it_sends_message_thread_id_when_a_topic_is_configured()
+    {
+        $sent = $this->captureSentPayload(new TelegramHandler('token', 'chat_id', Level::Error, true, 0, 7));
+
+        $this->assertSame(7, $sent['message_thread_id']);
+        $this->assertSame('chat_id', $sent['chat_id']);
+    }
+
+    public function test_it_omits_message_thread_id_without_a_topic()
+    {
+        $sent = $this->captureSentPayload(new TelegramHandler('token', 'chat_id', Level::Error, true, 0));
+
+        $this->assertArrayNotHasKey('message_thread_id', $sent);
+    }
+
+    public function test_empty_topic_id_is_treated_as_no_topic()
+    {
+        // env('TELEGRAM_LOG_TOPIC_ID') on an unset key yields '' — that must not
+        // become message_thread_id=0, which Telegram rejects.
+        $sent = $this->captureSentPayload(new TelegramHandler('token', 'chat_id', Level::Error, true, 0, ''));
+
+        $this->assertArrayNotHasKey('message_thread_id', $sent);
+    }
+
+    /**
+     * Handle one record through the given handler with a mocked Guzzle client and
+     * return the decoded JSON body that was posted to the Bot API.
+     */
+    protected function captureSentPayload(TelegramHandler $telegramHandler): array
+    {
+        $mock = new MockHandler([new Response(200, [], '{"ok":true}')]);
+        $stack = HandlerStack::create($mock);
+
+        $requests = [];
+        $stack->push(\GuzzleHttp\Middleware::history($requests));
+
+        $reflection = new \ReflectionClass($telegramHandler);
+        $property = $reflection->getProperty('client');
+        $property->setAccessible(true);
+        $property->setValue($telegramHandler, new Client(['handler' => $stack]));
+
+        $telegramHandler->handle(new LogRecord(
+            new \DateTimeImmutable(),
+            'test',
+            Level::Error,
+            'Topic routing message'
+        ));
+
+        $this->assertCount(1, $requests, 'Expected exactly one Bot API request');
+
+        return json_decode((string) $requests[0]['request']->getBody(), true);
+    }
+
     public function test_it_prevents_infinite_recursion()
     {
         $mock = new MockHandler([

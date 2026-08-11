@@ -7,18 +7,20 @@ use Illuminate\Support\Facades\Log;
 
 class TestCommand extends Command
 {
-    protected $signature = 'telegram-log:test';
+    protected $signature = 'telegram-log:test {--channel=telegram : Logging channel to test (any channel using the telegram driver)}';
     protected $description = 'Sends a test message to the Telegram channel';
 
     public function handle()
     {
-        $this->info('Checking Telegram channel configuration...');
+        $channel = $this->option('channel');
 
-        $config = config('logging.channels.telegram');
+        $this->info("Checking Telegram channel configuration [{$channel}]...");
+
+        $config = config("logging.channels.{$channel}");
 
         if (empty($config)) {
-            $this->error('Configuration for logging.channels.telegram not found.');
-            $this->line('Please make sure the telegram channel is configured in your config/logging.php file.');
+            $this->error("Configuration for logging.channels.{$channel} not found.");
+            $this->line('Please make sure the channel is configured in your config/logging.php file.');
             return 1;
         }
 
@@ -31,10 +33,11 @@ class TestCommand extends Command
             return 1;
         }
 
-        $this->info("Configuration found. Attempting to send a test message...");
+        $topicId = $config['topic_id'] ?? null;
+        $this->info("Configuration found (chat {$chatId}" . ($topicId ? ", topic {$topicId}" : '') . '). Attempting to send a test message...');
 
         try {
-            Log::channel('telegram')->error('Hello from your Telegram Log Channel! This is a test message sent via the telegram-log:test command.');
+            Log::channel($channel)->error("Hello from your Telegram Log Channel! This is a test message sent via the telegram-log:test command (channel: {$channel}).");
             $this->info('Test message dispatched successfully! Please check your Telegram chat.');
         } catch (\Exception $e) {
             $this->error('An error occurred while sending the message:');

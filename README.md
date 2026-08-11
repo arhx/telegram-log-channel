@@ -23,6 +23,7 @@ The service provider will be automatically registered.
 
     -   `TELEGRAM_LOG_BOT_TOKEN`: Your Telegram bot's token.
     -   `TELEGRAM_LOG_CHAT_ID`: The ID of the chat where logs should be sent.
+    -   `TELEGRAM_LOG_TOPIC_ID`: (Optional) Forum topic (thread) id inside a supergroup — see [Forum topics](#forum-topics-supergroups). Leave empty for a normal group or channel.
     -   `TELEGRAM_LOG_LEVEL`: (Optional) The minimum log level to be sent (defaults to `error`).
     -   `TELEGRAM_LOG_THROTTLE`: (Optional) Number of seconds to suppress duplicate messages (defaults to `600` = 10 minutes). Set to `0` to disable throttling.
 
@@ -36,10 +37,50 @@ The service provider will be automatically registered.
             'driver' => 'telegram',
             'token' => env('TELEGRAM_LOG_BOT_TOKEN'),
             'chat_id' => env('TELEGRAM_LOG_CHAT_ID'),
+            'topic_id' => env('TELEGRAM_LOG_TOPIC_ID'), // optional, forum supergroups
             'level' => env('TELEGRAM_LOG_LEVEL', 'debug'), // Example of overriding the level
         ],
     ],
     ```
+
+## Forum topics (supergroups)
+
+If the target chat is a **forum supergroup** (topics enabled), Telegram needs a
+`message_thread_id` or the message lands in *General*. Set `topic_id` on the
+channel (env `TELEGRAM_LOG_TOPIC_ID`) to the topic's id.
+
+**Finding the topic id:** open the topic in Telegram Web / copy a message link —
+`https://t.me/c/<chat>/<TOPIC_ID>/<message_id>`. Programmatically, the id is the
+`message_thread_id` of any message posted in that topic (visible in
+`getUpdates`).
+
+Because the driver is registered under the `telegram` driver name, you can define
+**several channels on the same bot**, each pointing at a different topic:
+
+```php
+'channels' => [
+    'telegram' => [ // errors → "ERROR" topic
+        'driver' => 'telegram',
+        'token' => env('TELEGRAM_LOG_BOT_TOKEN'),
+        'chat_id' => env('TELEGRAM_LOG_CHAT_ID'),
+        'topic_id' => env('TELEGRAM_LOG_TOPIC_ID'),
+        'level' => 'warning',
+    ],
+
+    'telegram_registration' => [ // registration events → "REGISTRATION" topic
+        'driver' => 'telegram',
+        'token' => env('TELEGRAM_LOG_BOT_TOKEN'),
+        'chat_id' => env('TELEGRAM_LOG_CHAT_ID'),
+        'topic_id' => env('TELEGRAM_LOG_REGISTRATION_TOPIC_ID'),
+        'level' => 'info',
+        'throttle' => 0,
+    ],
+],
+```
+
+Throttling is per chat **and** topic, so the same text sent to two topics is not
+cross-suppressed. Test a specific channel with
+`php artisan telegram-log:test --channel=telegram_registration`.
 
 ## Usage
 

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-08-11
+
+### Added
+- **Forum topic support.** A channel can now declare `topic_id` (env `TELEGRAM_LOG_TOPIC_ID`), sent to the Bot API as `message_thread_id`, so logs land in a specific topic of a forum supergroup instead of *General*. Empty / unset → the key is omitted entirely, so plain groups and channels behave exactly as before.
+- Several channels may run on the same bot with different `topic_id`s (any channel can use the `telegram` driver), which is how one bot serves e.g. an `ERROR` topic and an `UPDATES` topic.
+- `telegram-log:test` accepts `--channel=` to test any channel using the telegram driver (defaults to `telegram`).
+
+### Changed
+- The duplicate-suppression signature now includes chat id and topic id, so the same message going to two different topics is no longer cross-throttled.
+
 ## [1.4.0] - 2026-07-20
 
 ### Added

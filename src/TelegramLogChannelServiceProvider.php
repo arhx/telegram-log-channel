@@ -42,6 +42,7 @@ class TelegramLogChannelServiceProvider extends ServiceProvider
                 'driver' => 'telegram',
                 'token' => env('TELEGRAM_LOG_BOT_TOKEN'),
                 'chat_id' => env('TELEGRAM_LOG_CHAT_ID'),
+                'topic_id' => env('TELEGRAM_LOG_TOPIC_ID'),
                 'level' => env('TELEGRAM_LOG_LEVEL', 'error'),
                 'throttle' => env('TELEGRAM_LOG_THROTTLE', 600),
             ]);
