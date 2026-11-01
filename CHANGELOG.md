@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-11-01
+
+### Security
+- **TLS verification is now enabled.** The Guzzle client used `verify => false`, so the bot token and log contents could be intercepted on the way to `api.telegram.org`. The check is on by default and configurable: channel key `verify`, or `verify_tls` in `config/telegram-log-channel.php` (env `TELEGRAM_LOG_VERIFY_TLS`); a string is treated as a CA bundle path. Servers with a broken CA store may start failing with `cURL error 60` — fix the CA store rather than turning the check off.
+
+### Added
+- Channel options `include_request` (env `TELEGRAM_LOG_INCLUDE_REQUEST`) and `include_context` (env `TELEGRAM_LOG_INCLUDE_CONTEXT`), both `true` by default, to drop the request body and the context/extra JSON.
+- `TelegramHandler::redactUsing(?callable $fn)` — a global hook `fn (LogRecord $record): bool`; `true` sends a content-free message (host, level, exception class, `Source:`, `User:`; text replaced by `[приховано]`, no request, context or extra). Fails closed if the hook throws. Throttling still applies.
+
 ## [1.5.0] - 2026-08-11
 
 ### Added

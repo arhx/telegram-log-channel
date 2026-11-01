@@ -13,6 +13,9 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class TelegramHandler extends AbstractProcessingHandler
 {
+    /** Placeholder sent instead of the log message text in redacted mode. */
+    public const REDACTED_MARKER = '[приховано]';
+
     protected Client $client;
     protected string $botToken;
     protected string $chatId;
@@ -24,22 +27,73 @@ class TelegramHandler extends AbstractProcessingHandler
      */
     protected ?int $topicId;
 
-    public function __construct(string $botToken, string $chatId, int|string|Level $level = Level::Error, bool $bubble = true, int $throttleSeconds = 600, int|string|null $topicId = null)
-    {
+    /** Options the Guzzle client was built with (kept for introspection). */
+    protected array $clientOptions;
+
+    /** Append the request body (input minus _method/_token) to the Request line. */
+    protected bool $includeRequest;
+
+    /** Append the JSON-encoded record context and extra. */
+    protected bool $includeContext;
+
+    /**
+     * Global hook deciding per record whether to send a content-free message.
+     * Signature: fn (LogRecord $record): bool — true means redact.
+     *
+     * @var (callable(LogRecord): bool)|null
+     */
+    protected static $redactResolver = null;
+
+    private static bool $isHandling = false;
+
+    /**
+     * @param bool|string $verify Guzzle `verify` option: true (default) checks the
+     *                            TLS certificate of api.telegram.org, a string is a
+     *                            path to a CA bundle, false disables the check.
+     */
+    public function __construct(
+        string $botToken,
+        string $chatId,
+        int|string|Level $level = Level::Error,
+        bool $bubble = true,
+        int $throttleSeconds = 600,
+        int|string|null $topicId = null,
+        bool|string $verify = true,
+        bool $includeRequest = true,
+        bool $includeContext = true,
+    ) {
         parent::__construct($level, $bubble);
-        $this->client = new Client([
-            'verify' => false,
+        $this->clientOptions = [
+            'verify' => $verify,
             'timeout' => 5,
             'connect_timeout' => 3,
-        ]);
+        ];
+        $this->client = new Client($this->clientOptions);
         $this->botToken = $botToken;
         $this->chatId = $chatId;
         $this->throttleSeconds = $throttleSeconds;
         $this->topicId = ($topicId === null || $topicId === '') ? null : (int) $topicId;
+        $this->includeRequest = $includeRequest;
+        $this->includeContext = $includeContext;
     }
 
-    private static bool $isHandling = false;
-    
+    /**
+     * Register a callback that decides, per log record, whether the message must
+     * be sent without content (no message text, request, context or extra).
+     * Pass null to remove the hook.
+     *
+     * @param (callable(LogRecord): bool)|null $resolver
+     */
+    public static function redactUsing(?callable $resolver): void
+    {
+        static::$redactResolver = $resolver;
+    }
+
+    public function getClientOptions(): array
+    {
+        return $this->clientOptions;
+    }
+
     protected function write(LogRecord $record): void
     {
         if (self::$isHandling) {
@@ -49,18 +103,16 @@ class TelegramHandler extends AbstractProcessingHandler
         self::$isHandling = true;
 
         try {
-            if (isset($record['context']['exception'])) {
-                $exception = $record['context']['exception'];
-                if ($exception instanceof HttpExceptionInterface) {
-                    $statusCode = $exception->getStatusCode();
-                    if ($statusCode >= 400 && $statusCode < 500) {
-                        return;
-                    }
+            $exception = $record['context']['exception'] ?? null;
+            if ($exception instanceof HttpExceptionInterface) {
+                $statusCode = $exception->getStatusCode();
+                if ($statusCode >= 400 && $statusCode < 500) {
+                    return;
                 }
             }
 
             // Get the host or directory name
-            $isCli = php_sapi_name() === 'cli';
+            $isCli = $this->runningInConsole();
             $hostOrDirectory = $isCli
                 ? basename(base_path()) // If CLI, get the directory name
                 : request()->getHost(); // If not CLI, get the host name
@@ -70,8 +122,8 @@ class TelegramHandler extends AbstractProcessingHandler
 
             // Extract first non-vendor file:line from exception trace
             $sourceLocation = '';
-            if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
-                $sourceLocation = $this->extractSourceLocation($record['context']['exception']);
+            if ($exception instanceof \Throwable) {
+                $sourceLocation = $this->extractSourceLocation($exception);
             }
 
             // Throttle identical messages: skip if the same error was already sent
@@ -81,6 +133,8 @@ class TelegramHandler extends AbstractProcessingHandler
                 return;
             }
 
+            $redact = $this->shouldRedact($record);
+
             // Collect metadata lines
             $meta = [];
 
@@ -88,14 +142,17 @@ class TelegramHandler extends AbstractProcessingHandler
                 $meta[] = "Source: $sourceLocation";
             }
 
-            // Request info (only in HTTP context)
-            if (!$isCli) {
+            // Request info (only in HTTP context, never in redacted mode)
+            if (!$isCli && !$redact) {
                 try {
                     $request = request();
                     $method = $request->method();
                     $path = $request->getPathInfo();
-                    $requestData = $request->except(['_method', '_token']);
-                    $requestJson = !empty($requestData) ? ' ' . json_encode($requestData, JSON_UNESCAPED_UNICODE) : '';
+                    $requestJson = '';
+                    if ($this->includeRequest) {
+                        $requestData = $request->except(['_method', '_token']);
+                        $requestJson = !empty($requestData) ? ' ' . json_encode($requestData, JSON_UNESCAPED_UNICODE) : '';
+                    }
                     $meta[] = "Request: $method $path$requestJson";
                 } catch (\Throwable $e) {
                     // request not available
@@ -114,14 +171,24 @@ class TelegramHandler extends AbstractProcessingHandler
 
             $metaBlock = !empty($meta) ? "\n" . implode("\n", $meta) : '';
 
-            $context = !empty($record['context']) ? json_encode($record['context'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
-            $extra = !empty($record['extra']) ? json_encode($record['extra'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
-            $params = implode("\n", array_filter([
-                $context,
-                $extra
-            ]));
-            if (!empty($params)) {
-                $params = "\n" . $params;
+            $params = '';
+            if ($this->includeContext && !$redact) {
+                $context = !empty($record['context']) ? json_encode($record['context'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
+                $extra = !empty($record['extra']) ? json_encode($record['extra'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : null;
+                $params = implode("\n", array_filter([$context, $extra]));
+                if ($params !== '') {
+                    $params = "\n" . $params;
+                }
+            }
+
+            if ($redact) {
+                // Only the exception class survives: its message may carry data
+                // (e.g. SQL exceptions include bound values).
+                $body = $exception instanceof \Throwable
+                    ? get_class($exception) . ' ' . self::REDACTED_MARKER
+                    : self::REDACTED_MARKER;
+            } else {
+                $body = $record['message'];
             }
 
             // Format the message with additional data
@@ -129,7 +196,7 @@ class TelegramHandler extends AbstractProcessingHandler
                 "[%s] %s: %s%s%s",
                 $hostOrDirectory,
                 $record['level_name'],
-                $record['message'],
+                $body,
                 $metaBlock,
                 $params
             );
@@ -141,6 +208,31 @@ class TelegramHandler extends AbstractProcessingHandler
         } finally {
             self::$isHandling = false;
         }
+    }
+
+    /**
+     * Ask the registered hook whether this record must be redacted. Fails
+     * closed: if the hook throws, the record is redacted and the hook's error
+     * is reported to the fallback channel.
+     */
+    protected function shouldRedact(LogRecord $record): bool
+    {
+        if (static::$redactResolver === null) {
+            return false;
+        }
+
+        try {
+            return (bool) (static::$redactResolver)($record);
+        } catch (\Throwable $e) {
+            $this->logSelfError($e);
+
+            return true;
+        }
+    }
+
+    protected function runningInConsole(): bool
+    {
+        return php_sapi_name() === 'cli';
     }
 
     /**

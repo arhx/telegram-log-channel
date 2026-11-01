@@ -45,6 +45,9 @@ class TelegramLogChannelServiceProvider extends ServiceProvider
                 'topic_id' => env('TELEGRAM_LOG_TOPIC_ID'),
                 'level' => env('TELEGRAM_LOG_LEVEL', 'error'),
                 'throttle' => env('TELEGRAM_LOG_THROTTLE', 600),
+                'verify' => env('TELEGRAM_LOG_VERIFY_TLS', true),
+                'include_request' => env('TELEGRAM_LOG_INCLUDE_REQUEST', true),
+                'include_context' => env('TELEGRAM_LOG_INCLUDE_CONTEXT', true),
             ]);
         }
 
